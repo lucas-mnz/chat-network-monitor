@@ -1,17 +1,40 @@
 import socket
+import threading
+import queue
 import time
 
-def start_udp_server():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.bind(("127.0.0.1", 12345))
-    print("Servidor UDP aguardando mensagens...")
+message_queue = queue.Queue()
+clients = set()
 
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+server_socket.bind(("localhost", 12345))
+print("Servidor UDP aguardando mensagens...")
+
+def receive():
     while True:
-        message, addr = server_socket.recvfrom(1024)
-        
-        start_time = time.time()  # Marca o tempo antes de enviar a resposta
-        server_socket.sendto(message, addr)  # Envia a mesma mensagem de volta
-        latency = (time.time() - start_time) * 1000  # Calcula latência em ms
-        print(f"Latência: {latency:.2f} ms de {addr}")
+        try:
+           message, addr = server_socket.recvfrom(1024)
+           message_queue.put((message, addr))
+           print(f"Mensagem recebida de {addr}")
+        except:
+            print("Erro ao receber mensagem.")
 
-start_udp_server()
+def broadcast():
+    while True:
+        while not message_queue.empty():
+            message, addr = message_queue.get()
+            print(message.decode())
+            if addr not in clients:
+                clients.add(addr)
+            for client in clients:
+                try:
+                    server_socket.sendto(f"{addr} disse: {message.decode()}".encode(), client)
+                    print(f"Enviando mensagem para {client}")
+                except:
+                    clients.remove(client)
+
+t1 = threading.Thread(target=receive)
+t2 = threading.Thread(target=broadcast)
+
+t1.start()
+t2.start()

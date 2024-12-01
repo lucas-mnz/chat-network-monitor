@@ -1,39 +1,41 @@
 import socket
 import threading
-import time
 
 def handle_client(conn, addr, clients):
+    """Gerencia as mensagens de um cliente e as repassa para outros"""
     print(f"Cliente conectado: {addr}")
     while True:
         try:
-            start_time = time.time()  # Marca o tempo antes de receber a mensagem
-            message = conn.recv(1024).decode()  # Recebe a mensagem
-            latency = (time.time() - start_time) * 1000  # Calcula latência em ms
-            print(f"Latência: {latency:.4f} ms de {addr}")
-            
-            if not message or message == "/sair":
+            message = conn.recv(1024).decode()  # Recebe a mensagem do cliente
+            if not message or message == "Q":
                 print(f"Cliente desconectado: {addr}")
-                clients.remove(conn)
+                clients.remove(conn)  # Remove cliente desconectado
                 conn.close()
                 break
+
             print(f"{addr} disse: {message}")
+
+            # Repassa a mensagem para os clientes
             for client in clients:
-                if client != conn:
-                    client.send(f"{addr} disse: {message}".encode())
+                client.send(f"{addr} disse: {message}".encode())
         except:
+            print(f"Erro com o cliente: {addr}")
+            clients.remove(conn)
+            conn.close()
             break
 
 def start_server():
+    """Inicia o servidor TCP"""
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(("127.0.0.1", 12345))
+    server_socket.bind(("localhost", 12345))  # Configura o IP e a porta do servidor
     server_socket.listen()
     print("Servidor TCP aguardando conexões...")
 
-    clients = []
+    clients = []  # Lista para armazenar conexões de clientes
 
     while True:
-        conn, addr = server_socket.accept()
-        clients.append(conn)
+        conn, addr = server_socket.accept()  # Aceita uma conexão
+        clients.append(conn)  # Adiciona o cliente à lista de conexões
         thread = threading.Thread(target=handle_client, args=(conn, addr, clients))
         thread.start()
 
