@@ -4,27 +4,17 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-# Configurações do monitoramento
-TARGET_IP = "127.0.0.1"  # IP do destino para monitorar
-TARGET_PORT = 12345      # Porta do destino
-TIMEOUT = 2              # Tempo limite para resposta (em segundos)
-INTERVAL = 10            # Intervalo entre os pings (em segundos)
-
-# Escala de latência (em milissegundos)
+# Definições iniciais
+TARGET_IP = "127.0.0.1"  # IP do servidor
+TARGET_PORT = 12345      # Porta do servidor
+TIMEOUT = 2              # Em segundos
+INTERVAL = 10            # Em segundos
 LATENCY_NORMAL = 100
 LATENCY_SLOW = 300
 
-# Configurações do e-mail - utilize Ethereal para testes
-EMAIL_FROM = "email@ethereal.email"
-EMAIL_PASSWORD = "senha temporária"
-EMAIL_TO = "nome@email.com"
-SMTP_SERVER = "smtp.ethereal.email"
-SMTP_PORT = 587
-
 def send_email(status, latency):
-    """Envia um e-mail com o status da conexão."""
-    subject = f"Latency Alert: {status}"
-    body = f"The connection to {TARGET_IP}:{TARGET_PORT} is {status}.\nLatency: {latency} ms"
+    subject = f"Alerta de latência: {status}"
+    body = f"A conexão ao {TARGET_IP}:{TARGET_PORT} está {status}.\nLatência: {latency} ms"
     
     message = MIMEMultipart()
     message["From"] = EMAIL_FROM
@@ -37,12 +27,11 @@ def send_email(status, latency):
             server.starttls()
             server.login(EMAIL_FROM, EMAIL_PASSWORD)
             server.sendmail(EMAIL_FROM, EMAIL_TO, message.as_string())
-        print(f"Alert email sent: {status}")
+        print(f"E-mail de conexão enviado: {status}")
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Não foi possível enviar o e-mail: {e}")
 
 def monitor_latency():
-    """Monitora a latência da conexão usando UDP."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
         udp_socket.settimeout(TIMEOUT)
         while True:
@@ -53,18 +42,25 @@ def monitor_latency():
                 latency = (time.time() - start_time) * 1000  # Em milissegundos
                 
                 if latency < LATENCY_NORMAL:
-                    print(f"Connection Normal. Latency: {latency:.2f} ms")
+                    print(f"Conexão Normal. Latência: {latency:.2f} ms")
                     send_email("Normal", latency)
                 elif latency < LATENCY_SLOW:
-                    print(f"Connection Slow. Latency: {latency:.2f} ms")
-                    send_email("Slow", latency)
+                    print(f"Conexão Lenta. Latência: {latency:.2f} ms")
+                    send_email("Lenta", latency)
                 else:
-                    print(f"Connection Very Slow. Latency: {latency:.2f} ms")
-                    send_email("Very Slow", latency)
+                    print(f"Conexão Muito Lenta. Latência: {latency:.2f} ms")
+                    send_email("Muito Lenta", latency)
             except socket.timeout:
-                print("Connection Inactive.")
-                send_email("Inactive", "No response")
+                print("Conexão Inativa.")
+                send_email("Inativa", "Sem Resposta")
             
             time.sleep(INTERVAL)
 
+# Configurações do e-mail
+EMAIL_TO = "nome@email.com"
+SMTP_SERVER = "smtp.ethereal.email"
+SMTP_PORT = 587
+print("Para testes, utilize o Ethereal Mail para enviar e-mails.")
+EMAIL_FROM = input("Digite o endereço de e-mail: ")
+EMAIL_PASSWORD = input("Digite a senha: ")
 monitor_latency()
